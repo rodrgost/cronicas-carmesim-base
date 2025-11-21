@@ -13,9 +13,51 @@ const DIFFICULTY_LABELS = {
   7: "Extremo"
 };
 
+const ATTRIBUTE_TRANSLATIONS = {
+  strength: "Força",
+  dexterity: "Destreza",
+  stamina: "Vigor",
+  charisma: "Carisma",
+  manipulation: "Manipulação",
+  composure: "Autocontrole",
+  intelligence: "Inteligência",
+  wits: "Raciocínio",
+  resolve: "Perseverança"
+};
+
+const SKILL_TRANSLATIONS = {
+  athletics: "Esportes",
+  brawl: "Briga",
+  drive: "Condução",
+  firearms: "Armas de Fogo",
+  stealth: "Furtividade",
+  survival: "Sobrevivência",
+  animal_ken: "Empatia com Animais",
+  etiquette: "Etiqueta",
+  insight: "Intuição",
+  intimidation: "Intimidação",
+  leadership: "Liderança",
+  persuasion: "Persuasão",
+  streetwise: "Manha",
+  subterfuge: "Lábia",
+  academics: "Acadêmicos",
+  awareness: "Prontidão",
+  finance: "Finanças",
+  investigation: "Investigação",
+  medicine: "Medicina",
+  occult: "Ocultismo",
+  politics: "Política",
+  science: "Ciências",
+  technology: "Tecnologia"
+};
+
 export default function DiceRollChallenge({ challenge, character, onComplete }) {
   const [isRolling, setIsRolling] = useState(false);
   const [result, setResult] = useState(null);
+
+  if (!challenge) {
+    return null;
+  }
 
   const getAttribute = (attr) => {
     for (const category of Object.values(character.attributes)) {
@@ -42,7 +84,6 @@ export default function DiceRollChallenge({ challenge, character, onComplete }) 
     const skillValue = getSkill(challenge.skill);
     const dicePool = attributeValue + skillValue;
 
-    // Simulate dice roll (d10 system, 6+ is success)
     let successes = 0;
     const rolls = [];
     
@@ -54,23 +95,28 @@ export default function DiceRollChallenge({ challenge, character, onComplete }) 
       }
     }
 
+    const rollResult = {
+      successes,
+      rolls,
+      isSuccess: successes >= challenge.difficulty
+    };
+
     setTimeout(() => {
-      setResult({
-        successes,
-        rolls,
-        isSuccess: successes >= challenge.difficulty
-      });
+      setResult(rollResult);
       setIsRolling(false);
     }, 1500);
   };
 
   const handleComplete = () => {
-    onComplete(result.successes);
+    onComplete(result.successes, result);
   };
 
   const attributeValue = getAttribute(challenge.attribute);
   const skillValue = getSkill(challenge.skill);
   const dicePool = attributeValue + skillValue;
+
+  const attributeName = ATTRIBUTE_TRANSLATIONS[challenge.attribute] || challenge.attribute || 'Desconhecido';
+  const skillName = SKILL_TRANSLATIONS[challenge.skill] || (challenge.skill ? challenge.skill.replace(/_/g, ' ') : 'Desconhecido');
 
   return (
     <Card className="border-primary/50 bg-primary/5">
@@ -94,11 +140,11 @@ export default function DiceRollChallenge({ challenge, character, onComplete }) 
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-gray-400">Atributo:</span>
-            <p className="font-semibold capitalize text-foreground">{challenge.attribute} ({attributeValue})</p>
+            <p className="font-semibold text-foreground">{attributeName} ({attributeValue})</p>
           </div>
           <div>
             <span className="text-gray-400">Perícia:</span>
-            <p className="font-semibold capitalize text-foreground">{challenge.skill.replace(/_/g, ' ')} ({skillValue})</p>
+            <p className="font-semibold text-foreground">{skillName} ({skillValue})</p>
           </div>
           <div>
             <span className="text-gray-400">Parada de Dados:</span>

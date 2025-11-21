@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Map, ArrowRight, Plus, ArrowLeft, Trash2 } from "lucide-react";
+import { Loader2, Map, ArrowRight, Plus, ArrowLeft, Trash2, BookOpen } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,9 +16,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { createPageUrl } from "@/utils";
+import { useTranslation } from "@/components/i18n/LanguageContext";
 
 export default function WorldsList() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [worlds, setWorlds] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,33 +51,28 @@ export default function WorldsList() {
   };
 
   const handleDeleteWorld = async (worldId, e) => {
-    e.stopPropagation(); // Prevent the card's onClick from navigating
+    e.stopPropagation();
     try {
-      // Delete all characters in this world
       const allCharacters = await base44.entities.Character.list();
       const worldCharacters = allCharacters.filter(c => c.world_id === worldId);
       for (const char of worldCharacters) {
         await base44.entities.Character.delete(char.id);
       }
 
-      // Delete all chronicles in this world
       const allChronicles = await base44.entities.Chronicle.list();
       const worldChronicles = allChronicles.filter(c => c.world_id === worldId);
       for (const chron of worldChronicles) {
         await base44.entities.Chronicle.delete(chron.id);
       }
 
-      // Delete all NPCs in this world
       const allNPCs = await base44.entities.NPC.list();
       const worldNPCs = allNPCs.filter(n => n.world_id === worldId);
       for (const npc of worldNPCs) {
         await base44.entities.NPC.delete(npc.id);
       }
 
-      // Delete the world
       await base44.entities.World.delete(worldId);
       
-      // Reload worlds
       await loadWorlds();
     } catch (error) {
       console.error("Error deleting world:", error);
@@ -84,29 +88,29 @@ export default function WorldsList() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
+      {/* Fixed Header */}
+      <div className="flex-none p-4 md:p-8 pb-4 border-b border-border bg-background/95 backdrop-blur z-50">
+        <div className="max-w-6xl mx-auto">
           <Button
             variant="ghost"
             onClick={() => navigate(createPageUrl("Home"))}
             className="mb-4 text-gray-400 hover:text-foreground"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
+            {t('common.back')}
           </Button>
           
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <Map className="w-8 h-8 text-primary drop-shadow-[0_0_10px_rgba(220,38,38,0.6)]" />
-                <h1 className="font-headline text-4xl font-bold text-foreground">
-                  Seus Mundos
+                <h1 className="font-headline text-3xl md:text-4xl font-bold text-foreground">
+                  {t('worlds.yourWorlds')}
                 </h1>
               </div>
               <p className="text-gray-400">
-                Escolha um mundo para continuar sua crônica ou crie um novo
+                {t('worlds.subtitle')}
               </p>
             </div>
             
@@ -115,23 +119,26 @@ export default function WorldsList() {
               className="bg-primary hover:bg-primary/90"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Novo Mundo
+              {t('worlds.newWorld')}
             </Button>
           </div>
         </div>
+      </div>
 
-        {/* Worlds Grid */}
-        {worlds.length === 0 ? (
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="max-w-6xl mx-auto pb-8">
+          {worlds.length === 0 ? (
           <Card className="bg-card border-border">
             <CardContent className="py-12 text-center">
               <Map className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400 mb-4">Você ainda não criou nenhum mundo</p>
+              <p className="text-gray-400 mb-4">{t('worlds.noWorlds')}</p>
               <Button
                 onClick={() => navigate(createPageUrl("CreateWorld"))}
                 className="bg-primary hover:bg-primary/90"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Criar Primeiro Mundo
+                {t('worlds.createFirstWorld')}
               </Button>
             </CardContent>
           </Card>
@@ -152,18 +159,56 @@ export default function WorldsList() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <Badge variant="outline" className="text-xs border-border text-gray-400">
                         {new Date(world.created_date).toLocaleDateString('pt-BR')}
                       </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="group-hover:text-primary"
-                      >
-                        Ver Personagens
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
+                      
+                      <div className="flex items-center gap-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-gray-400 hover:text-primary"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <BookOpen className="w-4 h-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="bg-card border-border max-w-2xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle className="text-foreground font-headline text-2xl">
+                                {world.name}
+                              </DialogTitle>
+                              <DialogDescription className="text-gray-400">
+                                {t('createWorld.detailedTab')}
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="mt-4 space-y-4">
+                              <div>
+                                <h3 className="text-sm font-semibold text-primary mb-2">{t('worlds.yourDescription')}</h3>
+                                <p className="text-gray-300 text-sm">{world.player_description}</p>
+                              </div>
+                              <div className="border-t border-border pt-4">
+                                <h3 className="text-sm font-semibold text-primary mb-2">{t('worlds.generatedDetails')}</h3>
+                                <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">
+                                  {world.generated_details}
+                                </p>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="group-hover:text-primary"
+                        >
+                          {t('worlds.viewCharacters')}
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </div>
@@ -175,25 +220,25 @@ export default function WorldsList() {
                       variant="ghost"
                       size="icon"
                       className="absolute top-2 right-2 text-gray-400 hover:text-red-500 hover:bg-red-950/30"
-                      onClick={(e) => e.stopPropagation()} // Stop propagation here
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="bg-card border-border">
                     <AlertDialogHeader>
-                      <AlertDialogTitle className="text-foreground">Deletar Mundo?</AlertDialogTitle>
+                      <AlertDialogTitle className="text-foreground">{t('worlds.deleteTitle')}</AlertDialogTitle>
                       <AlertDialogDescription className="text-gray-400">
-                        Isso irá deletar permanentemente o mundo "{world.name}" e TODOS os personagens e crônicas associados. Esta ação não pode ser desfeita.
+                        {t('worlds.deleteDescription', { name: world.name })}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel className="border-border bg-secondary text-foreground">Cancelar</AlertDialogCancel>
+                      <AlertDialogCancel className="border-border bg-secondary text-foreground">{t('common.cancel')}</AlertDialogCancel>
                       <AlertDialogAction 
-                        onClick={(e) => handleDeleteWorld(world.id, e)} // Pass event to stop propagation
+                        onClick={(e) => handleDeleteWorld(world.id, e)}
                         className="bg-red-900 hover:bg-red-800 text-foreground"
                       >
-                        Deletar
+                        {t('common.delete')}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -202,6 +247,7 @@ export default function WorldsList() {
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

@@ -1,17 +1,19 @@
 import React from "react";
-import { ThemeProvider, ThemeToggle } from "./components/ThemeToggle";
+import { ThemeProvider } from "./components/ThemeToggle";
+import { LanguageProvider } from "./components/i18n/LanguageContext";
+import PWAConfig from "./components/PWAConfig";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function Layout({ children, currentPageName }) {
   return (
-    <ThemeProvider>
-      <div className="min-h-screen bg-background">
-        {currentPageName !== "Play" && (
-          <div className="fixed top-4 right-4 z-50">
-            <ThemeToggle />
-          </div>
-        )}
-        {children}
-      </div>
+    <ThemeProvider defaultTheme="dark">
+      <LanguageProvider>
+        <PWAConfig />
+        <div className="min-h-screen bg-background">
+          {children}
+          <Toaster position="top-center" richColors closeButton />
+        </div>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

@@ -1,11 +1,19 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Skull, BookOpen, Plus } from "lucide-react";
+import { Skull, BookOpen, Plus, Globe } from "lucide-react";
 import { createPageUrl } from "@/utils";
+import { useTranslation } from "@/components/i18n/LanguageContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function Home() {
   const navigate = useNavigate();
+  const { t, language, changeLanguage } = useTranslation();
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -19,9 +27,21 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-b from-black via-black/80 to-black" />
       </div>
 
+      {/* Language Selector */}
+      <div className="absolute top-4 right-4 z-50">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => changeLanguage(language === 'pt' ? 'en' : 'pt')}
+          className="text-white/70 hover:text-white hover:bg-white/10 text-xs px-2 py-1 h-auto"
+        >
+          {language === 'pt' ? '🇧🇷 PT' : '🇺🇸 EN'}
+        </Button>
+      </div>
+
       {/* Content */}
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
+      <div className="relative z-10 h-screen flex flex-col items-center justify-center px-4 overflow-y-auto">
+        <div className="max-w-4xl mx-auto text-center space-y-6 md:space-y-8 py-8">
           {/* Skull Icon */}
           <div className="flex justify-center mb-6">
             <div className="relative">
@@ -32,19 +52,18 @@ export default function Home() {
 
           {/* Title */}
           <div className="space-y-4">
-            <h1 className="font-headline text-6xl md:text-8xl font-bold text-foreground tracking-tight drop-shadow-[0_0_20px_rgba(220,38,38,0.5)]">
-              Crônicas<br />
-              <span className="text-primary">Carmesim</span>
+            <h1 className="font-headline text-5xl md:text-8xl font-bold text-foreground tracking-tight drop-shadow-[0_0_20px_rgba(220,38,38,0.5)]">
+              {t('home.title1')}<br />
+              <span className="text-primary">{t('home.title2')}</span>
             </h1>
-            <p className="font-headline text-xl md:text-2xl text-red-300 italic">
-              Um RPG de Vampiro: A Máscara
+            <p className="font-headline text-lg md:text-2xl text-red-300 italic">
+              {t('home.subtitle')}
             </p>
           </div>
 
           {/* Description */}
           <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto leading-relaxed">
-            Entre nas sombras de um mundo onde vampiros governam a noite.
-            Sua história de sangue, poder e humanidade perdida está prestes a começar.
+            {t('home.description')}
           </p>
 
           {/* CTA Buttons */}
@@ -55,7 +74,7 @@ export default function Home() {
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-headline text-xl px-12 py-6 h-auto rounded-lg shadow-[0_0_30px_rgba(220,38,38,0.6)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(220,38,38,0.8)]"
             >
               <Plus className="w-6 h-6 mr-3" />
-              Nova Crônica
+              {t('home.newChronicle')}
             </Button>
 
             <Button
@@ -65,14 +84,16 @@ export default function Home() {
               className="border-primary text-primary hover:bg-primary/10 font-headline text-xl px-12 py-6 h-auto rounded-lg shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all duration-300 hover:scale-105"
             >
               <BookOpen className="w-6 h-6 mr-3" />
-              Continuar Crônica
+              {t('home.continueChronicle')}
             </Button>
+
+
           </div>
 
           {/* Atmospheric Text */}
           <div className="pt-12">
             <p className="font-headline text-sm text-red-400 italic">
-              "A Besta sussurra em seus ouvidos. A Humanidade escorrega entre seus dedos."
+              {t('home.atmosphericText')}
             </p>
           </div>
         </div>

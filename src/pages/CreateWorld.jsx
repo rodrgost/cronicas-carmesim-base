@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -11,8 +10,10 @@ import { Loader2, Map, ArrowRight, Sparkles, RefreshCw, ArrowLeft } from "lucide
 import { createPageUrl } from "@/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTranslation } from "@/components/i18n/LanguageContext";
 
 export default function CreateWorld() {
+  const { t, language } = useTranslation();
   const navigate = useNavigate();
   const [worldName, setWorldName] = useState("");
   const [worldDescription, setWorldDescription] = useState("");
@@ -30,8 +31,11 @@ export default function CreateWorld() {
     setGeneratedDetails(null);
 
     try {
+      const langInstruction = language === 'en' ? 'OUTPUT IN ENGLISH.' : 'OUTPUT IN PORTUGUESE.';
+      
       const result = await base44.integrations.Core.InvokeLLM({
         prompt: `Você é um mestre experiente em criar mundos ricos e detalhados para Vampiro: A Máscara V5.
+${langInstruction}
 
 **TAREFA:** Criar uma cidade vampírica completa baseado nas seguintes informações:
 
@@ -88,8 +92,11 @@ Seja detalhado, atmosférico e use o tom gótico-punk apropriado para V5. A desc
     setGeneratedDetails(null);
 
     try {
+      const langInstruction = language === 'en' ? 'OUTPUT IN ENGLISH.' : 'OUTPUT IN PORTUGUESE.';
+
       const result = await base44.integrations.Core.InvokeLLM({
         prompt: `Você é um construtor de mundos experiente para Vampiro: A Máscara V5.
+${langInstruction}
 
 O jogador forneceu a seguinte descrição para sua cidade/mundo:
 
@@ -171,39 +178,45 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-5xl mx-auto">
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          onClick={() => navigate(createPageUrl("Home"))}
-          className="mb-4 text-gray-400 hover:text-foreground"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Voltar
-        </Button>
-
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <Map className="w-16 h-16 text-primary drop-shadow-[0_0_10px_rgba(220,38,38,0.6)]" />
-          </div>
-          <h1 className="font-headline text-4xl md:text-5xl font-bold text-foreground mb-3">
-            Construa Seu Mundo
-          </h1>
-          <p className="text-gray-400 text-lg">
-            Descreva a cidade onde sua crônica se desenrolará
-          </p>
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
+      {/* Fixed Header */}
+      <div className="flex-none p-4 md:p-8 pb-2 bg-background z-10">
+        <div className="max-w-5xl mx-auto">
+          <Button
+            variant="ghost"
+            onClick={() => navigate(createPageUrl("Home"))}
+            className="mb-2 text-gray-400 hover:text-foreground"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            {t('common.back')}
+          </Button>
         </div>
+      </div>
 
-        <Card className="bg-card border-border shadow-[0_0_30px_rgba(220,38,38,0.2)]">
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <Map className="w-12 h-12 md:w-16 md:h-16 text-primary drop-shadow-[0_0_10px_rgba(220,38,38,0.6)]" />
+            </div>
+            <h1 className="font-headline text-3xl md:text-5xl font-bold text-foreground mb-3">
+              {t('createWorld.title')}
+            </h1>
+            <p className="text-gray-400 text-lg">
+              {t('createWorld.subtitle')}
+            </p>
+          </div>
+
+          <Card className="bg-card border-border shadow-[0_0_30px_rgba(220,38,38,0.2)] mb-8">
           <CardHeader>
             <CardTitle className="font-headline text-2xl text-foreground">
-              {generatedDetails ? "Mundo Gerado" : "Criação do Mundo"}
+              {generatedDetails ? t('createWorld.generatedCardTitle') : t('createWorld.cardTitle')}
             </CardTitle>
             <CardDescription className="text-gray-400">
               {generatedDetails 
-                ? "Revise os detalhes gerados pela IA e salve para continuar"
-                : "Escolha entre geração rápida por keywords ou descrição detalhada"
+                ? t('createWorld.generatedCardDescription')
+                : t('createWorld.cardDescription')
               }
             </CardDescription>
           </CardHeader>
@@ -212,13 +225,19 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
               <>
                 <div className="space-y-2">
                   <Label htmlFor="worldName" className="text-base text-foreground">
-                    Nome da Cidade/Mundo *
+                    {t('createWorld.nameLabel')}
                   </Label>
                   <Input
                     id="worldName"
-                    placeholder="Ex: São Paulo, Nova York, Londres, Praga..."
+                    placeholder={t('createWorld.namePlaceholder')}
                     value={worldName}
-                    onChange={(e) => setWorldName(e.target.value)}
+                    onChange={(e) => {
+                      const words = e.target.value.split(' ');
+                      const capitalized = words.map(word => 
+                        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                      ).join(' ');
+                      setWorldName(capitalized);
+                    }}
                     disabled={isGenerating}
                     className="text-base bg-secondary border-border"
                   />
@@ -228,35 +247,35 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
                   <TabsList className="grid w-full grid-cols-2 bg-secondary">
                     <TabsTrigger value="quick">
                       <Sparkles className="w-4 h-4 mr-2" />
-                      Geração Rápida
+                      {t('createWorld.quickTab')}
                     </TabsTrigger>
                     <TabsTrigger value="detailed">
                       <Map className="w-4 h-4 mr-2" />
-                      Descrição Detalhada
+                      {t('createWorld.detailedTab')}
                     </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="quick" className="space-y-4 mt-4">
                     <div className="space-y-2">
                       <Label htmlFor="quickKeywords" className="text-base text-foreground">
-                        Keywords / Conceito *
+                        {t('createWorld.keywordsLabel')}
                       </Label>
                       <Input
                         id="quickKeywords"
-                        placeholder="Ex: megacidade cyberpunk, porto histórico, cidade universitária..."
+                        placeholder={t('createWorld.keywordsPlaceholder')}
                         value={quickKeywords}
                         onChange={(e) => setQuickKeywords(e.target.value)}
                         disabled={isGenerating}
                         className="text-base bg-secondary border-border"
                       />
                       <p className="text-sm text-gray-500">
-                        Forneça 3-5 palavras-chave ou uma frase curta descrevendo o tipo de cidade que deseja
+                        {t('createWorld.keywordsHelp')}
                       </p>
                     </div>
 
                     <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
                       <p className="text-sm text-gray-300 mb-2">
-                        <strong className="text-primary">Geração Rápida:</strong> A IA criará automaticamente:
+                        <strong className="text-primary">{t('createWorld.quickInfoTitle')}</strong>
                       </p>
                       <ul className="text-sm text-gray-400 space-y-1 ml-4">
                         <li>• Geografia e atmosfera detalhadas</li>
@@ -276,12 +295,12 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
                       {isGenerating ? (
                         <>
                           <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Gerando Mundo...
+                          {t('createWorld.generating')}
                         </>
                       ) : (
                         <>
                           <Sparkles className="w-5 h-5 mr-2" />
-                          Gerar Mundo Automaticamente
+                          {t('createWorld.generateQuick')}
                         </>
                       )}
                     </Button>
@@ -290,11 +309,11 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
                   <TabsContent value="detailed" className="space-y-4 mt-4">
                     <div className="space-y-2">
                       <Label htmlFor="worldDescription" className="text-base text-foreground">
-                        Descrição Detalhada *
+                        {t('createWorld.detailedLabel')}
                       </Label>
                       <Textarea
                         id="worldDescription"
-                        placeholder="Descreva sua cidade em detalhes: clima, facções, locais importantes, NPCs notáveis, tensões políticas, estilo da crônica... Seja criativo! A IA usará sua descrição como base para criar um mundo rico e detalhado."
+                        placeholder={t('createWorld.detailedPlaceholder')}
                         value={worldDescription}
                         onChange={(e) => setWorldDescription(e.target.value)}
                         disabled={isGenerating}
@@ -302,13 +321,13 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
                         className="text-base resize-none bg-secondary border-border"
                       />
                       <p className="text-sm text-gray-500">
-                        Forneça o máximo de detalhes possível sobre sua visão para a cidade
+                        {t('createWorld.detailedHelp')}
                       </p>
                     </div>
 
                     <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
                       <p className="text-sm text-gray-300 mb-2">
-                        <strong className="text-primary">Descrição Detalhada:</strong> A IA expandirá sua visão mantendo fidelidade:
+                        <strong className="text-primary">{t('createWorld.detailedInfoTitle')}</strong>
                       </p>
                       <ul className="text-sm text-gray-400 space-y-1 ml-4">
                         <li>• Respeita totalmente sua visão original</li>
@@ -327,12 +346,12 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
                       {isGenerating ? (
                         <>
                           <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Gerando Mundo...
+                          {t('createWorld.generating')}
                         </>
                       ) : (
                         <>
                           <ArrowRight className="w-5 h-5 mr-2" />
-                          Expandir com IA
+                          {t('createWorld.generateDetailed')}
                         </>
                       )}
                     </Button>
@@ -347,7 +366,7 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
                       <h3 className="text-xl font-headline font-bold text-foreground">{worldName}</h3>
                       <Badge variant="outline" className="mt-2 text-green-400 border-green-500">
                         <Sparkles className="w-3 h-3 mr-1" />
-                        Gerado pela IA
+                        {t('createWorld.generatedBadge')}
                       </Badge>
                     </div>
                     <Button
@@ -364,7 +383,7 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
                       className="border-border"
                     >
                       <RefreshCw className="w-4 h-4 mr-2" />
-                      Regenerar
+                      {t('createWorld.regenerate')}
                     </Button>
                   </div>
 
@@ -384,7 +403,7 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
                       onClick={() => setGeneratedDetails(null)}
                       className="flex-1 border-border"
                     >
-                      Voltar
+                      {t('common.back')}
                     </Button>
                     <Button
                       onClick={handleSaveWorld}
@@ -394,12 +413,12 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
                       {isSaving ? (
                         <>
                           <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Salvando...
+                          {t('createWorld.saving')}
                         </>
                       ) : (
                         <>
                           <ArrowRight className="w-5 h-5 mr-2" />
-                          Salvar e Criar Personagem
+                          {t('createWorld.save')}
                         </>
                       )}
                     </Button>
@@ -410,10 +429,11 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
           </CardContent>
         </Card>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center pb-8">
           <p className="text-sm text-red-400 italic font-headline">
-            "Cada cidade tem seus segredos. Cada noite, suas histórias."
+            {t('createWorld.quote')}
           </p>
+        </div>
         </div>
       </div>
     </div>

@@ -56,16 +56,23 @@ export default function NPCPanel({ npcs, activeNPCIds, onTalkToNPC, currentNPCId
             const isCurrentNPC = currentNPCId === npc.id;
 
             return (
-              <div key={npc.id}>
-                <div className={`space-y-2 p-3 rounded-lg border transition-all ${
-                  isCurrentNPC 
-                    ? 'border-primary bg-primary/10 shadow-[0_0_10px_rgba(220,38,38,0.3)]' 
-                    : 'border-border bg-secondary/50'
-                }`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-foreground">{npc.name}</h4>
+            <div key={npc.id}>
+              <div className={`space-y-2 p-3 rounded-lg border transition-all ${
+                isCurrentNPC 
+                  ? 'border-primary bg-primary/10 shadow-[0_0_10px_rgba(220,38,38,0.3)]' 
+                  : 'border-border bg-card'
+              }`}>
+                <div className="flex items-start gap-3">
+                  {npc.portrait_url && (
+                    <img 
+                      src={npc.portrait_url} 
+                      alt={npc.name}
+                      className="w-16 h-16 object-cover rounded-md flex-shrink-0 border border-border"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-semibold text-foreground truncate">{npc.name}</h4>
                         {isCurrentNPC && (
                           <Badge className="bg-primary text-xs">Conversando</Badge>
                         )}
@@ -76,16 +83,16 @@ export default function NPCPanel({ npcs, activeNPCIds, onTalkToNPC, currentNPCId
                       {npc.role && (
                         <p className="text-xs text-primary italic">{npc.role}</p>
                       )}
+                      <Button
+                        size="sm"
+                        variant={isCurrentNPC ? "default" : "outline"}
+                        onClick={() => onTalkToNPC(isCurrentNPC ? null : npc.id)}
+                        className={`mt-1 ${isCurrentNPC ? "bg-primary hover:bg-primary/90" : "border-border"}`}
+                      >
+                        <MessageCircle className="w-3 h-3 mr-1" />
+                        {isCurrentNPC ? "Parar" : "Falar"}
+                      </Button>
                     </div>
-                    <Button
-                      size="sm"
-                      variant={isCurrentNPC ? "default" : "outline"}
-                      onClick={() => onTalkToNPC(isCurrentNPC ? null : npc.id)}
-                      className={isCurrentNPC ? "bg-primary hover:bg-primary/90" : "border-border"}
-                    >
-                      <MessageCircle className="w-3 h-3 mr-1" />
-                      {isCurrentNPC ? "Parar" : "Falar"}
-                    </Button>
                   </div>
 
                   {npc.appearance && (
