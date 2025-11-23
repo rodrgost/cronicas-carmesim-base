@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { appParams } from '@/lib/app-params';
-import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const AuthContext = createContext();
 
@@ -11,133 +11,79 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
-  const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
+  const [appPublicSettings, setAppPublicSettings] = useState({
+    id: 'firebase-app-id',
+    public_settings: {
+      name: 'Crônicas Carmesim',
+      theme: 'dark'
+    }
+  });
 
   useEffect(() => {
-    checkAppState();
+    // Listener do Firebase para mudanças de estado de autenticação
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      console.log("Auth State Changed:", currentUser ? "User Logged In" : "User Logged Out", currentUser?.uid);
+      setIsLoadingAuth(true);
+      if (currentUser) {
+        setUser(currentUser);
+        setIsAuthenticated(true);
+        // Sync user to Firestore
+        base44.auth.createUser(currentUser);
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+      setIsLoadingAuth(false);
+
+      // Simulando carregamento de configurações públicas
+      setIsLoadingPublicSettings(false);
+    }, (error) => {
+      console.error("Erro no Auth State Change:", error);
+      setAuthError({
+        type: 'auth_error',
+        message: error.message
+      });
+      setIsLoadingAuth(false);
+      setIsLoadingPublicSettings(false);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
+  // Mantido para compatibilidade, mas o useEffect já cuida disso
   const checkAppState = async () => {
-    try {
-      setIsLoadingPublicSettings(true);
-      setAuthError(null);
-      
-      // First, check app public settings (with token if available)
-      // This will tell us if auth is required, user not registered, etc.
-      const appClient = createAxiosClient({
-        baseURL: `${appParams.serverUrl}/api/apps/public`,
-        headers: {
-          'X-App-Id': appParams.appId
-        },
-        token: appParams.token, // Include token if available
-        interceptResponses: true
-      });
-      
-      try {
-        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
-        setAppPublicSettings(publicSettings);
-        
-        // If we got the app public settings successfully, check if user is authenticated
-        if (appParams.token) {
-          await checkUserAuth();
-        } else {
-          setIsLoadingAuth(false);
-          setIsAuthenticated(false);
-        }
-        setIsLoadingPublicSettings(false);
-      } catch (appError) {
-        console.error('App state check failed:', appError);
-        
-        // Handle app-level errors
-        if (appError.status === 403 && appError.data?.extra_data?.reason) {
-          const reason = appError.data.extra_data.reason;
-          if (reason === 'auth_required') {
-            setAuthError({
-              type: 'auth_required',
-              message: 'Authentication required'
-            });
-          } else if (reason === 'user_not_registered') {
-            setAuthError({
-              type: 'user_not_registered',
-              message: 'User not registered for this app'
-            });
-          } else {
-            setAuthError({
-              type: reason,
-              message: appError.message
-            });
-          }
-        } else {
-          setAuthError({
-            type: 'unknown',
-            message: appError.message || 'Failed to load app'
-          });
-        }
-        setIsLoadingPublicSettings(false);
-        setIsLoadingAuth(false);
-      }
-    } catch (error) {
-      console.error('Unexpected error:', error);
-      setAuthError({
-        type: 'unknown',
-        message: error.message || 'An unexpected error occurred'
-      });
-      setIsLoadingPublicSettings(false);
-      setIsLoadingAuth(false);
-    }
+    // No-op com Firebase listener
   };
 
-  const checkUserAuth = async () => {
-    try {
-      // Now check if the user is authenticated
-      setIsLoadingAuth(true);
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-      setIsAuthenticated(true);
-      setIsLoadingAuth(false);
-    } catch (error) {
-      console.error('User auth check failed:', error);
-      setIsLoadingAuth(false);
-      setIsAuthenticated(false);
-      
-      // If user auth fails, it might be an expired token
-      if (error.status === 401 || error.status === 403) {
-        setAuthError({
-          type: 'auth_required',
-          message: 'Authentication required'
-        });
-      }
-    }
-  };
-
-  const logout = (shouldRedirect = true) => {
-    setUser(null);
-    setIsAuthenticated(false);
-    
-    if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
-      base44.auth.logout(window.location.href);
-    } else {
-      // Just remove the token without redirect
-      base44.auth.logout();
-    }
+  const logout = async (shouldRedirect = true) => {
+    await base44.auth.logout(shouldRedirect ? window.location.href : null);
   };
 
   const navigateToLogin = () => {
-    // Use the SDK's redirectToLogin method
-    base44.auth.redirectToLogin(window.location.href);
+    // Aqui poderíamos abrir um modal ou redirecionar
+    // Por enquanto, vamos tentar logar direto com Google se chamado
+    base44.auth.loginWithGoogle().catch(err => {
+      console.error("Falha ao abrir login:", err);
+    });
+  };
+
+  // Expor função de login explicitamente
+  const loginWithGoogle = async () => {
+    return base44.auth.loginWithGoogle();
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated, 
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated,
       isLoadingAuth,
       isLoadingPublicSettings,
       authError,
       appPublicSettings,
       logout,
       navigateToLogin,
+      loginWithGoogle,
       checkAppState
     }}>
       {children}

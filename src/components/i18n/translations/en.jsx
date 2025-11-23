@@ -111,27 +111,6 @@ export default {
     totalWeight: "Total Weight",
     equippedItems: "Equipped Items"
   },
-  map: {
-    title: "Map of {{worldName}}",
-    addLocation: "Add Location",
-    locations: "Locations"
-  },
-  worlds: {
-    title: "My Worlds",
-    createWorld: "Create New World",
-    noWorlds: "You haven't created any worlds yet",
-    viewCharacters: "View Characters",
-    deleteWorld: "Delete World",
-    confirmDelete: "Are you sure you want to delete this world? This action cannot be undone."
-  },
-  characters: {
-    title: "Characters",
-    createCharacter: "Create New Character",
-    noCharacters: "No characters created in this world",
-    play: "Play",
-    delete: "Delete",
-    confirmDelete: "Are you sure you want to delete this character?"
-  },
   worlds: {
     title: "My Worlds",
     yourWorlds: "Your Worlds",

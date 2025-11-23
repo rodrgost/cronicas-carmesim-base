@@ -10,6 +10,7 @@ import { setupIframeMessaging } from './lib/iframe-messaging';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import RequireAuth from '@/components/RequireAuth';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -20,6 +21,8 @@ setupIframeMessaging();
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
   : <>{children}</>;
+
+
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin } = useAuth();
@@ -44,14 +47,38 @@ const AuthenticatedApp = () => {
     }
   }
 
+  const protectedRoutes = [
+    'CreateWorld',
+    'CreateCharacter',
+    'Play',
+    'WorldsList',
+    'CharactersList',
+    'Settings'
+  ];
+
   // Render the main app
   return (
     <LayoutWrapper currentPageName={mainPageKey}>
       <Routes>
         <Route path="/" element={<MainPage />} />
-        {Object.entries(Pages).map(([path, Page]) => (
-          <Route key={path} path={`/${path}`} element={<Page />} />
-        ))}
+        {Object.entries(Pages).map(([path, Page]) => {
+          const isProtected = protectedRoutes.includes(path);
+          return (
+            <Route
+              key={path}
+              path={`/${path}`}
+              element={
+                isProtected ? (
+                  <RequireAuth>
+                    <Page />
+                  </RequireAuth>
+                ) : (
+                  <Page />
+                )
+              }
+            />
+          );
+        })}
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </LayoutWrapper>

@@ -111,27 +111,6 @@ export default {
     totalWeight: "Peso Total",
     equippedItems: "Itens Equipados"
   },
-  map: {
-    title: "Mapa de {{worldName}}",
-    addLocation: "Adicionar Local",
-    locations: "Locais"
-  },
-  worlds: {
-    title: "Meus Mundos",
-    createWorld: "Criar Novo Mundo",
-    noWorlds: "Você ainda não criou nenhum mundo",
-    viewCharacters: "Ver Personagens",
-    deleteWorld: "Deletar Mundo",
-    confirmDelete: "Tem certeza que deseja deletar este mundo? Esta ação não pode ser desfeita."
-  },
-  characters: {
-    title: "Personagens",
-    createCharacter: "Criar Novo Personagem",
-    noCharacters: "Nenhum personagem criado neste mundo",
-    play: "Jogar",
-    delete: "Deletar",
-    confirmDelete: "Tem certeza que deseja deletar este personagem?"
-  },
   worlds: {
     title: "Meus Mundos",
     yourWorlds: "Seus Mundos",

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -6,21 +6,30 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Map, ArrowRight, Sparkles, RefreshCw, ArrowLeft } from "lucide-react";
+import { Loader2, Map, ArrowRight, Sparkles, RefreshCw } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslation } from "@/components/i18n/LanguageContext";
+import { useAuth } from "@/lib/AuthContext";
+import PageHeader from "@/components/ui/PageHeader";
 
 export default function CreateWorld() {
   const { t, language } = useTranslation();
   const navigate = useNavigate();
+  const { isAuthenticated, isLoadingAuth } = useAuth();
   const [worldName, setWorldName] = useState("");
   const [worldDescription, setWorldDescription] = useState("");
   const [quickKeywords, setQuickKeywords] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedDetails, setGeneratedDetails] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isLoadingAuth && !isAuthenticated) {
+      navigate(createPageUrl("Home"));
+    }
+  }, [isLoadingAuth, isAuthenticated, navigate]);
 
   const handleQuickGenerate = async () => {
     if (!worldName.trim() || !quickKeywords.trim()) {
@@ -32,7 +41,7 @@ export default function CreateWorld() {
 
     try {
       const langInstruction = language === 'en' ? 'OUTPUT IN ENGLISH.' : 'OUTPUT IN PORTUGUESE.';
-      
+
       const result = await base44.integrations.Core.InvokeLLM({
         prompt: `Você é um mestre experiente em criar mundos ricos e detalhados para Vampiro: A Máscara V5.
 ${langInstruction}
@@ -153,7 +162,9 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
   };
 
   const handleSaveWorld = async () => {
+    console.log("Attempting to save world...");
     if (!worldName.trim() || !generatedDetails) {
+      console.warn("Save aborted: Missing name or details", { worldName, generatedDetails });
       return;
     }
 
@@ -161,37 +172,47 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
 
     try {
       const user = await base44.auth.me();
+      console.log("Current user for save:", user);
 
-      const world = await base44.entities.World.create({
+      if (!user) {
+        throw new Error("Usuário não autenticado no momento do salvamento.");
+      }
+
+      const worldData = {
         name: worldName,
         player_description: worldDescription || quickKeywords,
-        generated_details: generatedDetails,
-        user_id: user.email
-      });
+        generated_details: typeof generatedDetails === 'string' ? generatedDetails : (generatedDetails?.content || '')
+      };
+
+      console.log("Saving world data:", worldData);
+
+      const world = await base44.entities.World.create(worldData);
+
+      console.log("World saved successfully:", world);
 
       navigate(createPageUrl("CreateCharacter") + `?worldId=${world.id}`);
     } catch (error) {
       console.error("Error saving world:", error);
+      alert(`Erro ao salvar mundo: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
   };
 
-  return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
-      {/* Fixed Header */}
-      <div className="flex-none p-4 md:p-8 pb-2 bg-background z-10">
-        <div className="max-w-5xl mx-auto">
-          <Button
-            variant="ghost"
-            onClick={() => navigate(createPageUrl("Home"))}
-            className="mb-2 text-gray-400 hover:text-foreground"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            {t('common.back')}
-          </Button>
+  if (isLoadingAuth) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">{t('common.loading') || 'Carregando...'}</p>
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
+      <PageHeader backTo="WorldsList" />
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8">
@@ -209,231 +230,231 @@ Seja detalhado, evocativo e crie um cenário viável para uma campanha. Use ling
           </div>
 
           <Card className="bg-card border-border shadow-[0_0_30px_rgba(220,38,38,0.2)] mb-8">
-          <CardHeader>
-            <CardTitle className="font-headline text-2xl text-foreground">
-              {generatedDetails ? t('createWorld.generatedCardTitle') : t('createWorld.cardTitle')}
-            </CardTitle>
-            <CardDescription className="text-gray-400">
-              {generatedDetails 
-                ? t('createWorld.generatedCardDescription')
-                : t('createWorld.cardDescription')
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {!generatedDetails ? (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="worldName" className="text-base text-foreground">
-                    {t('createWorld.nameLabel')}
-                  </Label>
-                  <Input
-                    id="worldName"
-                    placeholder={t('createWorld.namePlaceholder')}
-                    value={worldName}
-                    onChange={(e) => {
-                      const words = e.target.value.split(' ');
-                      const capitalized = words.map(word => 
-                        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-                      ).join(' ');
-                      setWorldName(capitalized);
-                    }}
-                    disabled={isGenerating}
-                    className="text-base bg-secondary border-border"
-                  />
-                </div>
-
-                <Tabs defaultValue="quick" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 bg-secondary">
-                    <TabsTrigger value="quick">
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      {t('createWorld.quickTab')}
-                    </TabsTrigger>
-                    <TabsTrigger value="detailed">
-                      <Map className="w-4 h-4 mr-2" />
-                      {t('createWorld.detailedTab')}
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="quick" className="space-y-4 mt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="quickKeywords" className="text-base text-foreground">
-                        {t('createWorld.keywordsLabel')}
-                      </Label>
-                      <Input
-                        id="quickKeywords"
-                        placeholder={t('createWorld.keywordsPlaceholder')}
-                        value={quickKeywords}
-                        onChange={(e) => setQuickKeywords(e.target.value)}
-                        disabled={isGenerating}
-                        className="text-base bg-secondary border-border"
-                      />
-                      <p className="text-sm text-gray-500">
-                        {t('createWorld.keywordsHelp')}
-                      </p>
-                    </div>
-
-                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                      <p className="text-sm text-gray-300 mb-2">
-                        <strong className="text-primary">{t('createWorld.quickInfoTitle')}</strong>
-                      </p>
-                      <ul className="text-sm text-gray-400 space-y-1 ml-4">
-                        <li>• Geografia e atmosfera detalhadas</li>
-                        <li>• Estrutura de poder completa (Príncipe, Primogênito, Xerife)</li>
-                        <li>• Facções e tensões políticas</li>
-                        <li>• 5-7 locais importantes</li>
-                        <li>• NPCs chave com personalidades</li>
-                        <li>• Ganchos de história e mistérios</li>
-                      </ul>
-                    </div>
-
-                    <Button
-                      onClick={handleQuickGenerate}
-                      disabled={isGenerating || !worldName.trim() || !quickKeywords.trim()}
-                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-headline text-lg py-6 h-auto shadow-[0_0_20px_rgba(220,38,38,0.4)]"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          {t('createWorld.generating')}
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-5 h-5 mr-2" />
-                          {t('createWorld.generateQuick')}
-                        </>
-                      )}
-                    </Button>
-                  </TabsContent>
-
-                  <TabsContent value="detailed" className="space-y-4 mt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="worldDescription" className="text-base text-foreground">
-                        {t('createWorld.detailedLabel')}
-                      </Label>
-                      <Textarea
-                        id="worldDescription"
-                        placeholder={t('createWorld.detailedPlaceholder')}
-                        value={worldDescription}
-                        onChange={(e) => setWorldDescription(e.target.value)}
-                        disabled={isGenerating}
-                        rows={12}
-                        className="text-base resize-none bg-secondary border-border"
-                      />
-                      <p className="text-sm text-gray-500">
-                        {t('createWorld.detailedHelp')}
-                      </p>
-                    </div>
-
-                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                      <p className="text-sm text-gray-300 mb-2">
-                        <strong className="text-primary">{t('createWorld.detailedInfoTitle')}</strong>
-                      </p>
-                      <ul className="text-sm text-gray-400 space-y-1 ml-4">
-                        <li>• Respeita totalmente sua visão original</li>
-                        <li>• Expande com detalhes atmosféricos</li>
-                        <li>• Adiciona NPCs e locais consistentes</li>
-                        <li>• Cria tensões e ganchos de história</li>
-                        <li>• Estrutura tudo para facilitar a narrativa</li>
-                      </ul>
-                    </div>
-
-                    <Button
-                      onClick={handleManualGenerate}
-                      disabled={isGenerating || !worldName.trim() || !worldDescription.trim()}
-                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-headline text-lg py-6 h-auto shadow-[0_0_20px_rgba(220,38,38,0.4)]"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          {t('createWorld.generating')}
-                        </>
-                      ) : (
-                        <>
-                          <ArrowRight className="w-5 h-5 mr-2" />
-                          {t('createWorld.generateDetailed')}
-                        </>
-                      )}
-                    </Button>
-                  </TabsContent>
-                </Tabs>
-              </>
-            ) : (
-              <>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-xl font-headline font-bold text-foreground">{worldName}</h3>
-                      <Badge variant="outline" className="mt-2 text-green-400 border-green-500">
-                        <Sparkles className="w-3 h-3 mr-1" />
-                        {t('createWorld.generatedBadge')}
-                      </Badge>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (quickKeywords) {
-                          handleQuickGenerate();
-                        } else {
-                          handleManualGenerate();
-                        }
+            <CardHeader>
+              <CardTitle className="font-headline text-2xl text-foreground">
+                {generatedDetails ? t('createWorld.generatedCardTitle') : t('createWorld.cardTitle')}
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                {generatedDetails
+                  ? t('createWorld.generatedCardDescription')
+                  : t('createWorld.cardDescription')
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {!generatedDetails ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="worldName" className="text-base text-foreground">
+                      {t('createWorld.nameLabel')}
+                    </Label>
+                    <Input
+                      id="worldName"
+                      placeholder={t('createWorld.namePlaceholder')}
+                      value={worldName}
+                      onChange={(e) => {
+                        const words = e.target.value.split(' ');
+                        const capitalized = words.map(word =>
+                          word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                        ).join(' ');
+                        setWorldName(capitalized);
                       }}
                       disabled={isGenerating}
-                      className="border-border"
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      {t('createWorld.regenerate')}
-                    </Button>
+                      className="text-base bg-secondary border-border"
+                    />
                   </div>
 
-                  <Card className="bg-secondary border-border max-h-96 overflow-y-auto">
-                    <CardContent className="pt-6">
-                      <div className="prose prose-sm prose-invert max-w-none">
-                        <pre className="whitespace-pre-wrap font-body text-sm text-gray-300 leading-relaxed">
-                          {generatedDetails}
-                        </pre>
+                  <Tabs defaultValue="quick" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 bg-secondary">
+                      <TabsTrigger value="quick">
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        {t('createWorld.quickTab')}
+                      </TabsTrigger>
+                      <TabsTrigger value="detailed">
+                        <Map className="w-4 h-4 mr-2" />
+                        {t('createWorld.detailedTab')}
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="quick" className="space-y-4 mt-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="quickKeywords" className="text-base text-foreground">
+                          {t('createWorld.keywordsLabel')}
+                        </Label>
+                        <Input
+                          id="quickKeywords"
+                          placeholder={t('createWorld.keywordsPlaceholder')}
+                          value={quickKeywords}
+                          onChange={(e) => setQuickKeywords(e.target.value)}
+                          disabled={isGenerating}
+                          className="text-base bg-secondary border-border"
+                        />
+                        <p className="text-sm text-gray-500">
+                          {t('createWorld.keywordsHelp')}
+                        </p>
                       </div>
-                    </CardContent>
-                  </Card>
 
-                  <div className="flex gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setGeneratedDetails(null)}
-                      className="flex-1 border-border"
-                    >
-                      {t('common.back')}
-                    </Button>
-                    <Button
-                      onClick={handleSaveWorld}
-                      disabled={isSaving}
-                      className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-headline text-lg py-6 h-auto shadow-[0_0_20px_rgba(220,38,38,0.4)]"
-                    >
-                      {isSaving ? (
-                        <>
-                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          {t('createWorld.saving')}
-                        </>
-                      ) : (
-                        <>
-                          <ArrowRight className="w-5 h-5 mr-2" />
-                          {t('createWorld.save')}
-                        </>
-                      )}
-                    </Button>
+                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                        <p className="text-sm text-gray-300 mb-2">
+                          <strong className="text-primary">{t('createWorld.quickInfoTitle')}</strong>
+                        </p>
+                        <ul className="text-sm text-gray-400 space-y-1 ml-4">
+                          <li>• Geografia e atmosfera detalhadas</li>
+                          <li>• Estrutura de poder completa (Príncipe, Primogênito, Xerife)</li>
+                          <li>• Facções e tensões políticas</li>
+                          <li>• 5-7 locais importantes</li>
+                          <li>• NPCs chave com personalidades</li>
+                          <li>• Ganchos de história e mistérios</li>
+                        </ul>
+                      </div>
+
+                      <Button
+                        onClick={handleQuickGenerate}
+                        disabled={isGenerating || !worldName.trim() || !quickKeywords.trim()}
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-headline text-lg py-6 h-auto shadow-[0_0_20px_rgba(220,38,38,0.4)]"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                            {t('createWorld.generating')}
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-5 h-5 mr-2" />
+                            {t('createWorld.generateQuick')}
+                          </>
+                        )}
+                      </Button>
+                    </TabsContent>
+
+                    <TabsContent value="detailed" className="space-y-4 mt-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="worldDescription" className="text-base text-foreground">
+                          {t('createWorld.detailedLabel')}
+                        </Label>
+                        <Textarea
+                          id="worldDescription"
+                          placeholder={t('createWorld.detailedPlaceholder')}
+                          value={worldDescription}
+                          onChange={(e) => setWorldDescription(e.target.value)}
+                          disabled={isGenerating}
+                          rows={12}
+                          className="text-base resize-none bg-secondary border-border"
+                        />
+                        <p className="text-sm text-gray-500">
+                          {t('createWorld.detailedHelp')}
+                        </p>
+                      </div>
+
+                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                        <p className="text-sm text-gray-300 mb-2">
+                          <strong className="text-primary">{t('createWorld.detailedInfoTitle')}</strong>
+                        </p>
+                        <ul className="text-sm text-gray-400 space-y-1 ml-4">
+                          <li>• Respeita totalmente sua visão original</li>
+                          <li>• Expande com detalhes atmosféricos</li>
+                          <li>• Adiciona NPCs e locais consistentes</li>
+                          <li>• Cria tensões e ganchos de história</li>
+                          <li>• Estrutura tudo para facilitar a narrativa</li>
+                        </ul>
+                      </div>
+
+                      <Button
+                        onClick={handleManualGenerate}
+                        disabled={isGenerating || !worldName.trim() || !worldDescription.trim()}
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-headline text-lg py-6 h-auto shadow-[0_0_20px_rgba(220,38,38,0.4)]"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                            {t('createWorld.generating')}
+                          </>
+                        ) : (
+                          <>
+                            <ArrowRight className="w-5 h-5 mr-2" />
+                            {t('createWorld.generateDetailed')}
+                          </>
+                        )}
+                      </Button>
+                    </TabsContent>
+                  </Tabs>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xl font-headline font-bold text-foreground">{worldName}</h3>
+                        <Badge variant="outline" className="mt-2 text-green-400 border-green-500">
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          {t('createWorld.generatedBadge')}
+                        </Badge>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (quickKeywords) {
+                            handleQuickGenerate();
+                          } else {
+                            handleManualGenerate();
+                          }
+                        }}
+                        disabled={isGenerating}
+                        className="border-border"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        {t('createWorld.regenerate')}
+                      </Button>
+                    </div>
+
+                    <Card className="bg-secondary border-border max-h-96 overflow-y-auto">
+                      <CardContent className="pt-6">
+                        <div className="prose prose-sm prose-invert max-w-none">
+                          <pre className="whitespace-pre-wrap font-body text-sm text-gray-300 leading-relaxed">
+                            {typeof generatedDetails === 'string' ? generatedDetails : (generatedDetails?.content || '')}
+                          </pre>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => setGeneratedDetails(null)}
+                        className="flex-1 border-border"
+                      >
+                        {t('common.back')}
+                      </Button>
+                      <Button
+                        onClick={handleSaveWorld}
+                        disabled={isSaving}
+                        className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-headline text-lg py-6 h-auto shadow-[0_0_20px_rgba(220,38,38,0.4)]"
+                      >
+                        {isSaving ? (
+                          <>
+                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                            {t('createWorld.saving')}
+                          </>
+                        ) : (
+                          <>
+                            <ArrowRight className="w-5 h-5 mr-2" />
+                            {t('createWorld.save')}
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
-        <div className="mt-6 text-center pb-8">
-          <p className="text-sm text-red-400 italic font-headline">
-            {t('createWorld.quote')}
-          </p>
-        </div>
+          <div className="mt-6 text-center pb-8">
+            <p className="text-sm text-red-400 italic font-headline">
+              {t('createWorld.quote')}
+            </p>
+          </div>
         </div>
       </div>
     </div>

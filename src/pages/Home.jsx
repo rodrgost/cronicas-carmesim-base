@@ -1,24 +1,37 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Skull, BookOpen, Plus, Globe } from "lucide-react";
+import { Skull, BookOpen, Plus, LogIn } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { useTranslation } from "@/components/i18n/LanguageContext";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Home() {
   const navigate = useNavigate();
   const { t, language, changeLanguage } = useTranslation();
+  const { isAuthenticated, isLoadingAuth, loginWithGoogle } = useAuth();
+
+  const handleLogin = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      console.error("Erro ao logar:", error);
+    }
+  };
+
+  // Mostrar loading enquanto verifica autenticação
+  if (isLoadingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="text-white text-xl">Carregando...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Background Image */}
-      <div 
+      <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
           backgroundImage: "url('https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=2000')",
@@ -68,26 +81,37 @@ export default function Home() {
 
           {/* CTA Buttons */}
           <div className="pt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="lg"
-              onClick={() => navigate(createPageUrl("CreateWorld"))}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-headline text-xl px-12 py-6 h-auto rounded-lg shadow-[0_0_30px_rgba(220,38,38,0.6)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(220,38,38,0.8)]"
-            >
-              <Plus className="w-6 h-6 mr-3" />
-              {t('home.newChronicle')}
-            </Button>
+            {!isAuthenticated ? (
+              <Button
+                size="lg"
+                onClick={handleLogin}
+                className="bg-white text-black hover:bg-gray-200 font-headline text-xl px-12 py-6 h-auto rounded-lg shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all duration-300 hover:scale-105"
+              >
+                <LogIn className="w-6 h-6 mr-3" />
+                Entrar com Google
+              </Button>
+            ) : (
+              <>
+                <Button
+                  size="lg"
+                  onClick={() => navigate(createPageUrl("CreateWorld"))}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-headline text-xl px-12 py-6 h-auto rounded-lg shadow-[0_0_30px_rgba(220,38,38,0.6)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(220,38,38,0.8)]"
+                >
+                  <Plus className="w-6 h-6 mr-3" />
+                  {t('home.newChronicle')}
+                </Button>
 
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => navigate(createPageUrl("WorldsList"))}
-              className="border-primary text-primary hover:bg-primary/10 font-headline text-xl px-12 py-6 h-auto rounded-lg shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all duration-300 hover:scale-105"
-            >
-              <BookOpen className="w-6 h-6 mr-3" />
-              {t('home.continueChronicle')}
-            </Button>
-
-
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => navigate(createPageUrl("WorldsList"))}
+                  className="border-primary text-primary hover:bg-primary/10 font-headline text-xl px-12 py-6 h-auto rounded-lg shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all duration-300 hover:scale-105"
+                >
+                  <BookOpen className="w-6 h-6 mr-3" />
+                  {t('home.continueChronicle')}
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Atmospheric Text */}
